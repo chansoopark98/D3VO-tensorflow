@@ -3,6 +3,31 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+
+# tensorboard log
+/tensorboard/
+
+# Assets
+/assets/weights/
+
+# depth ignore files and directories 
+/depth/data/*
+/depth/weights/
+/depth/tensorboard/
+/depth/results/
+
+# flow ignore files and directories
+/flow/data/*
+/flow/weights/
+/flow/tensorboard/
+
+# vo ignore files and directories
+/vo/data/
+/vo/export/
+/weights/
+/vo/weights/
+/vo/tensorboard/
+
 # C extensions
 *.so
 
