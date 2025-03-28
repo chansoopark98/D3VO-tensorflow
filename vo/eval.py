@@ -1,56 +1,18 @@
 import matplotlib
 matplotlib.use('Agg')
 import io
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import yaml
-# from monodepth_learner import Learner
 from d3vo_learner import Learner
 from utils.d3vo_projection_utils import pose_axis_angle_vec2mat, pose_vec2mat
 import pytransform3d.camera as pc
 
-def euler_to_rotation_matrix(rx, ry, rz):
-    """
-    간단한 Z-Y-X(roll-pitch-yaw) 순서의 Euler 각을 회전 행렬로 변환한다고 가정한 예시 함수.
-    실제 환경에 맞추어 오일러 각 변환 순서를 수정하세요.
-    """
-    # 각각 회전 행렬
-    cosx, sinx = np.cos(rx), np.sin(rx)
-    cosy, siny = np.cos(ry), np.sin(ry)
-    cosz, sinz = np.cos(rz), np.sin(rz)
-
-    # Rx, Ry, Rz 순으로 곱하는 예시(roll -> pitch -> yaw)
-    Rx = np.array([[1,    0,     0],
-                   [0,  cosx, -sinx],
-                   [0,  sinx,  cosx]])
-    Ry = np.array([[ cosy, 0, siny],
-                   [   0 , 1,   0 ],
-                   [-siny, 0, cosy]])
-    Rz = np.array([[ cosz, -sinz, 0],
-                   [ sinz,  cosz, 0],
-                   [   0 ,    0 , 1]])
-    
-    # 최종 회전 행렬
-    R = Rz @ Ry @ Rx
-    return R
-
-def pose_vector_to_transform(pose_vec):
-    """
-    pose_vec: [tx, ty, tz, rx, ry, rz] 형태라고 가정
-    4x4 변환 행렬(T)를 반환.
-    """
-    tx, ty, tz, rx, ry, rz = pose_vec
-    T = np.eye(4)
-    R = euler_to_rotation_matrix(rx, ry, rz)
-    T[:3, :3] = R
-    T[:3, 3]  = [tx, ty, tz]
-    return T
-
 class EvalTrajectory(Learner):
-    def __init__(self, depth_model: tf.keras.Model,
-                 pose_model: tf.keras.Model,
+    def __init__(self, depth_model: tf_keras.Model,
+                 pose_model: tf_keras.Model,
                  config: dict):
         super().__init__(depth_model, pose_model, config)
         # self.model = model
