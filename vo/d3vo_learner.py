@@ -148,7 +148,7 @@ class Learner(object):
         right_image = ref_images[1] # [B, H, W, 3]
 
         pixel_losses = 0.
-        smooth_losses = 0.
+        reg_losses = 0.
         uncertainty_losses = 0.
         
         H = tf.shape(tgt_image)[1]
@@ -258,10 +258,16 @@ class Learner(object):
             
             if self.auto_mask:
                 identity_reprojection_losses = tf.concat(identity_reprojection_list, axis=3)
-                min_reproj_loss = tf.reduce_min(reprojection_losses, axis=3, keepdims=True)
-                min_identity_reproj_loss = tf.reduce_min(identity_reprojection_losses, axis=3, keepdims=True)
-                min_identity_reproj_loss += tf.random.normal(tf.shape(min_identity_reproj_loss), stddev=1e-5)
-                combined = tf.minimum(min_reproj_loss, min_identity_reproj_loss)
+                
+                # PyTorch 구현처럼 랜덤 노이즈 추가 (타이 브레이킹)
+                identity_reprojection_losses += tf.random.normal(
+                    tf.shape(identity_reprojection_losses), 
+                    mean=0.0, 
+                    stddev=1e-5
+                )
+                
+                combined_losses = tf.concat([identity_reprojection_losses, reprojection_losses], axis=3)
+                combined = tf.reduce_min(combined_losses, axis=3, keepdims=True)
             else:
                 combined = tf.reduce_min(reprojection_losses, axis=3, keepdims=True)
             
@@ -275,19 +281,26 @@ class Learner(object):
             ab_losses = tf.concat(ab_losses, axis=3)
             ab_loss = tf.reduce_sum(ab_losses, axis=3, keepdims=True)
 
-            reg_loss = smooth_loss + self.ab_ratio * tf.reduce_mean(ab_loss)
+            reg_loss = smooth_loss + (self.ab_ratio * tf.reduce_mean(ab_loss))
             
             uncertainty_loss = tf.reduce_mean((pred_sigmas[s] - 1.0) ** 2)
 
             pixel_losses += reprojection_loss
-            smooth_losses += self.smoothness_ratio * reg_loss / (2 ** s)
+            reg_losses += self.smoothness_ratio * reg_loss / (2 ** s)
             uncertainty_losses += uncertainty_loss
 
         num_scales_f = tf.cast(self.num_scales, tf.float32)
         pixel_losses = pixel_losses / num_scales_f
-        smooth_losses = smooth_losses / num_scales_f
+        reg_losses = reg_losses / num_scales_f
         uncertainty_losses = uncertainty_losses / num_scales_f
         
-        total_loss = pixel_losses + smooth_losses + uncertainty_losses
+        total_loss = pixel_losses + reg_losses + uncertainty_losses
 
-        return total_loss, pixel_losses, smooth_losses, uncertainty_losses, pred_depths
+        predictions = {
+            'pred_depths': pred_depths,
+            'pred_sigma': pred_sigmas,
+            'pred_poses': pred_poses,
+            'pred_as': pred_as,
+            'pred_bs': pred_bs
+        }
+        return total_loss, pixel_losses, reg_losses, uncertainty_losses, predictions

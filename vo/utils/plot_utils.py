@@ -15,26 +15,78 @@ class PlotTool:
         self.num_source = config['Train']['num_source'] # 2
         self.num_scales = config['Train']['num_scale'] # 4
 
-    def plot_images(self, images: tf.Tensor, pred_depths: tf.Tensor, denorm_func: callable):
+    def plot_images(self, images: tf.Tensor, predictions: dict, denorm_func: callable):
+        """
+        predictions = {
+            'pred_depths': pred_depths,
+            'pred_sigma': pred_sigmas, 
+            'pred_poses': pred_poses, [left, right] # left = target to left
+            'pred_as': pred_as, [left_a, right_a]
+            'pred_bs': pred_bs [left_b, right_b]
+        }
+        """
+        pred_depths = predictions['pred_depths']
+        pred_sigmas = predictions['pred_sigma']
+        pred_poses = predictions['pred_poses']
+        pred_as = predictions['pred_as']
+        pred_bs = predictions['pred_bs']
+        
         # Plot 설정
         image = denorm_func(images[0])
         pred_depths = [depth[0] for depth in pred_depths]
-        
-        fig, axes = plt.subplots(1, 1 + self.num_scales, figsize=(10, 10))
+        pred_sigmas = [sigma[0] for sigma in pred_sigmas]
 
-        axes[0].imshow(image)
-        axes[0].set_title('Image')
-        axes[0].axis('off')
-    
+        pose_left = pred_poses[0][0]
+        pose_right = pred_poses[1][0]
+
+        pred_a = [a[0][0] for a in pred_as]
+        pred_b = [b[0][0] for b in pred_bs]
+        
+        fig, axes = plt.subplots(3, 1 + self.num_scales, figsize=(12, 8))
+
+        # Plotting image
+        axes[0, 0].imshow(image)
+        axes[0, 0].set_title('Image')
+        axes[0, 0].axis('off')
+        
+        # Plotting depth
         for idx in range(self.num_scales):
             depth = pred_depths[idx]
-            axes[idx + 1].imshow(depth, vmin=0., vmax=10., cmap='plasma')
-            axes[idx + 1].set_title(f'Scale {idx}')
-            axes[idx + 1].axis('off')
+            axes[0, idx + 1].imshow(depth, vmin=0., vmax=10., cmap='plasma')
+            axes[0, idx + 1].set_title(f'Depth Scale {idx}')
+            axes[0, idx + 1].axis('off')
+        
 
+        axes[1, 0].axis('off')        
+
+        # Plotting uncertainty
+        for idx in range(self.num_scales):
+            sigma = pred_sigmas[idx]
+            
+            axes[1, idx + 1].imshow(sigma[:,:,0], vmin=0.0, vmax=1.0)
+            axes[1, idx + 1].set_title(f'Uncertainty Scale {idx}')
+            axes[1, idx + 1].axis('off')
+        
+        # Write text information(pose, a, b)
+        left_pose_str = np.array2string(pose_left.numpy(), precision=4, suppress_small=True, separator=', ')
+        right_pose_str = np.array2string(pose_right.numpy(), precision=4, suppress_small=True, separator=', ')
+
+        pose_left_text = f'Pose Left: {left_pose_str}\n'
+        pose_right_text = f'Pose Right: {right_pose_str}\n'
+        a_left_text = f'Left a: {pred_a[0]:.4f}, Left b: {pred_b[0]:.4f}\n'
+        b_left_text = f'Right a: {pred_a[1]:.4f}, Right b: {pred_b[1]:.4f}'
+
+        text_list = [pose_left_text, pose_right_text, a_left_text, b_left_text]
+
+
+        axes[2, 0].axis('off')        
+
+        for idx, text in enumerate(text_list):
+            axes[2, idx + 1].text(0.2, 0.15 * (idx+1), text, fontsize=10, ha='center', va='center')
+            axes[2, idx + 1].axis('off')
+     
         fig.tight_layout()
 
-        # 이미지를 Tensorboard에 로깅하기 위해 버퍼에 저장
         buf = io.BytesIO()
         fig.savefig(buf, format='png')
         buf.seek(0)

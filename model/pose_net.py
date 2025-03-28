@@ -33,23 +33,18 @@ class PoseNetAB(tf_keras.Model):
         # 공통 특징 추출층
         self.shared_features_1 = tf_keras.Sequential([
             std_conv(1, 256, 1, use_bias=True, name='shared_conv1'),
-            # tf_keras.layers.BatchNormalization(),
-            tf_keras.layers.LeakyReLU(),
+            tf_keras.layers.ReLU(),
             std_conv(3, 256, 1, use_bias=True, name='shared_conv1_2'),
-            # tf_keras.layers.BatchNormalization(),
-            tf_keras.layers.LeakyReLU(),
+            tf_keras.layers.ReLU(),
         ])
 
         self.shared_features_2 = tf_keras.Sequential([
             std_conv(3, 256, 1, use_bias=True, name='shared_conv2'),
-            # tf_keras.layers.BatchNormalization(),
-            tf_keras.layers.LeakyReLU(),
+            tf_keras.layers.ReLU(),
         ])
 
         self.shared_features_3 = tf_keras.Sequential([
             std_conv(3, 6, 1, use_bias=True, name='shared_conv3'),
-            # tf_keras.layers.BatchNormalization(),
-            tf_keras.layers.LeakyReLU(),
         ]) 
 
         # 밝기 조정 파라미터 브랜치 (a와 b)
@@ -62,8 +57,6 @@ class PoseNetAB(tf_keras.Model):
             filters=1, kernel_size=(1, 1), strides=(1, 1),
             padding='same', name='b_conv'
         )
-
-        self.global_pool = tf_keras.layers.GlobalAveragePooling2D()
 
     def call(self, inputs, training=False):
         x = self.encoder(inputs, training=training)

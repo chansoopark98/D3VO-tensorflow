@@ -84,10 +84,13 @@ class Trainer(object):
         # 5. Metrics
         self.train_total_loss = tf_keras.metrics.Mean(name='train_total_loss')
         self.train_pixel_loss = tf_keras.metrics.Mean(name='train_pixel_loss')
-        self.train_smooth_loss = tf_keras.metrics.Mean(name='train_smooth_loss')
+        self.train_reg_loss = tf_keras.metrics.Mean(name='train_reg_loss')
+        self.train_uncertainty_loss = tf_keras.metrics.Mean(name='train_uncertainty_loss')
+
         self.valid_total_loss = tf_keras.metrics.Mean(name='valid_total_loss')
         self.valid_pixel_loss = tf_keras.metrics.Mean(name='valid_pixel_loss')
-        self.valid_smooth_loss = tf_keras.metrics.Mean(name='valid_smooth_loss')
+        self.valid_reg_loss = tf_keras.metrics.Mean(name='valid_reg_loss')
+        self.valid_uncertainty_loss = tf_keras.metrics.Mean(name='valid_uncertainty_loss')
 
         # 6. Logger
         current_time = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -108,19 +111,19 @@ class Trainer(object):
     @tf.function(jit_compile=True)
     def train_step(self, ref_images, target_image, intrinsic):
         with tf.GradientTape() as tape:
-            total_loss, pixel_loss, smooth_loss, uncertainty_losses, pred_depths = self.learner.forward_step(
+            total_loss, pixel_loss, reg_loss, uncertainty_losses, predictions = self.learner.forward_step(
                 ref_images, target_image, intrinsic, training=True)
             scaled_loss = self.optimizer.scale_loss(total_loss)
         
         all_vars = self.depth_net.trainable_variables + self.pose_net.trainable_variables
         grads = tape.gradient(scaled_loss, all_vars)
         self.optimizer.apply_gradients(zip(grads, all_vars))
-        return total_loss, pixel_loss, smooth_loss, uncertainty_losses, pred_depths
+        return total_loss, pixel_loss, reg_loss, uncertainty_losses, predictions
 
     @tf.function(jit_compile=True)
     def validation_step(self, ref_images, target_image, intrinsic) -> tf.Tensor:
-        total_loss, pixel_loss, smooth_loss, uncertainty_losses, pred_depths = self.learner.forward_step(ref_images, target_image, intrinsic, training=False)
-        return total_loss, pixel_loss, smooth_loss, uncertainty_losses, pred_depths
+        total_loss, pixel_loss, reg_loss, uncertainty_losses, predictions = self.learner.forward_step(ref_images, target_image, intrinsic, training=False)
+        return total_loss, pixel_loss, reg_loss, uncertainty_losses, predictions
 
     def train(self) -> None:        
         for epoch in range(self.config['Train']['epoch']):    
@@ -134,19 +137,20 @@ class Trainer(object):
             train_tqdm.set_description('Training   || Epoch : {0} ||'.format(epoch,
                                                                              round(float(self.optimizer.learning_rate.numpy()), 8)))
             for idx, (ref_images, target_image, intrinsic) in enumerate(train_tqdm):
-                train_t_loss, train_p_loss, train_s_loss, train_u_loss, pred_train_depths = self.train_step(ref_images, target_image, intrinsic)
+                train_t_loss, train_p_loss, train_r_loss, train_u_loss, predictions = self.train_step(ref_images, target_image, intrinsic)
 
                 # Update train metrics
                 self.train_total_loss(train_t_loss)
                 self.train_pixel_loss(train_p_loss)
-                self.train_smooth_loss(train_s_loss)
+                self.train_reg_loss(train_r_loss)
+                self.train_uncertainty_loss(train_u_loss)
 
                 if idx % self.config['Train']['train_plot_interval'] == 0:
                     current_step = self.data_loader.num_train_samples * epoch + idx
 
                     # Draw depth plot
                     train_depth_plot = self.plot_tool.plot_images(images=target_image, # target_image
-                                                                  pred_depths=pred_train_depths,
+                                                                  predictions=predictions,
                                                                   denorm_func=self.data_loader.denormalize_image)
 
                     with self.train_summary_writer.as_default():
@@ -156,8 +160,9 @@ class Trainer(object):
                 train_tqdm.set_postfix(
                     total_loss=self.train_total_loss.result().numpy(),
                     pixel_loss=self.train_pixel_loss.result().numpy(),
-                    smooth_loss=self.train_smooth_loss.result().numpy(),
-                    uncertain_loss= train_u_loss.numpy())
+                    smooth_loss=self.train_reg_loss.result().numpy(),
+                    uncertainty_loss=self.train_uncertainty_loss.result().numpy()
+                )
             
             # Logging train metrics
             with self.train_summary_writer.as_default():
@@ -166,8 +171,10 @@ class Trainer(object):
                                     self.train_total_loss.result(), step=epoch)
                 tf.summary.scalar(f'Train/{self.train_pixel_loss.name}',
                                     self.train_pixel_loss.result(), step=epoch)
-                tf.summary.scalar(f'Train/{self.train_smooth_loss.name}',
-                                    self.train_smooth_loss.result(), step=epoch)
+                tf.summary.scalar(f'Train/{self.train_reg_loss.name}',
+                                    self.train_reg_loss.result(), step=epoch)
+                tf.summary.scalar(f'Train/{self.train_uncertainty_loss.name}',
+                                    self.train_uncertainty_loss.result(), step=epoch)
             
             # Validation
             valid_tqdm = tqdm(self.data_loader.valid_dataset, total=self.data_loader.num_valid_samples)
@@ -178,13 +185,14 @@ class Trainer(object):
                 # Update valid metrics
                 self.valid_total_loss(valid_t_loss)
                 self.valid_pixel_loss(valid_p_loss)
-                self.valid_smooth_loss(valid_s_loss)
+                self.valid_reg_loss(valid_s_loss)
+                self.valid_uncertainty_loss(valid_u_loss)
 
                 if idx % self.config['Train']['valid_plot_interval'] == 0:
                     current_step = self.data_loader.num_valid_samples * epoch + idx
                     # Draw target image - target depth plot
                     valid_depth_plot = self.plot_tool.plot_images(images=target_image,
-                                                                  pred_depths=pred_valid_depths,
+                                                                  predictions=pred_valid_depths,
                                                                   denorm_func=self.data_loader.denormalize_image)
 
                     with self.valid_summary_writer.as_default():
@@ -194,7 +202,8 @@ class Trainer(object):
                 valid_tqdm.set_postfix(
                     total_loss=self.valid_total_loss.result().numpy(),
                     pixel_loss=self.valid_pixel_loss.result().numpy(),
-                    smooth_loss=self.valid_smooth_loss.result().numpy()
+                    smooth_loss=self.valid_reg_loss.result().numpy(),
+                    uncertainty_loss=self.valid_uncertainty_loss.result().numpy()
                 )
 
             # Logging valid metrics
@@ -204,8 +213,10 @@ class Trainer(object):
                                     self.valid_total_loss.result(), step=epoch)
                 tf.summary.scalar(f'Valid/{self.valid_pixel_loss.name}',
                                     self.valid_pixel_loss.result(), step=epoch)
-                tf.summary.scalar(f'Valid/{self.valid_smooth_loss.name}',
-                                    self.valid_smooth_loss.result(), step=epoch)
+                tf.summary.scalar(f'Valid/{self.valid_reg_loss.name}',
+                                    self.valid_reg_loss.result(), step=epoch)
+                tf.summary.scalar(f'Valid/{self.valid_uncertainty_loss.name}',
+                                    self.valid_uncertainty_loss.result(), step=epoch)
 
             # Eval
             print('Evaluate trajectory ... Current Epoch : {0}'.format(epoch))
@@ -227,10 +238,12 @@ class Trainer(object):
             # Reset metrics        
             self.train_total_loss.reset_states()
             self.train_pixel_loss.reset_states()
-            self.train_smooth_loss.reset_states()
+            self.train_reg_loss.reset_states()
+            self.train_uncertainty_loss.reset_states()
             self.valid_total_loss.reset_states()
             self.valid_pixel_loss.reset_states()
-            self.valid_smooth_loss.reset_states()
+            self.valid_reg_loss.reset_states()
+            self.valid_uncertainty_loss.reset_states()
 
 if __name__ == '__main__':
     with open('./vo/config.yaml', 'r') as file:

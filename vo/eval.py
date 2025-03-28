@@ -48,7 +48,6 @@ class EvalTrajectory(Learner):
 
         cat_right = tf.concat([tgt_image, right_image], axis=3) # [B,H,W,6]
 
-        
         pose_right, _, _ = self.pose_net(cat_right, training=False)  # [B,6]
 
         batch_poses = tf.cast(pose_right, tf.float32) 
