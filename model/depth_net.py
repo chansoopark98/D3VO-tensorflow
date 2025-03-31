@@ -155,6 +155,11 @@ class DispNetSigma(tf_keras.Model):
                               pretrained=True,
                               prefix=prefix + '_resnet18').build_model()
 
+        # self.encoder = Resnet34(image_shape=(*image_shape, 3),
+        #                         batch_size=batch_size,
+        #                         pretrained=True,
+        #                         prefix=prefix + '_resnet34').build_model()
+
         # Depth Decoder
         print('Building Depth Decoder Model')
         filters = [16, 32, 64, 128, 256]

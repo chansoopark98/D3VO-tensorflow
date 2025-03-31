@@ -63,7 +63,7 @@ class PlotTool:
         for idx in range(self.num_scales):
             sigma = pred_sigmas[idx]
             
-            axes[1, idx + 1].imshow(sigma[:,:,0], vmin=0.0, vmax=1.0)
+            axes[1, idx + 1].imshow(sigma[:,:,0], vmin=0.0, vmax=1.0, cmap='inferno')
             axes[1, idx + 1].set_title(f'Uncertainty Scale {idx}')
             axes[1, idx + 1].axis('off')
         

@@ -51,15 +51,15 @@ def plot_images(image: tf.Tensor,
     for idx, pred_sigma in enumerate(pred_sigmas):
         # Normalize sigma values for better visualization
         pred_sigma_vis = pred_sigma[0]
-        # log_var에서 sigma(표준 편차)로 변환 후 시각화
-        sigma = tf.exp(0.5 * pred_sigma_vis)  # sigma = sqrt(exp(log_var))
+        # # log_var에서 sigma(표준 편차)로 변환 후 시각화
+        # sigma = tf.exp(0.5 * pred_sigma_vis)  # sigma = sqrt(exp(log_var))
         
-        # 시그마 값을 0-1 범위로 정규화 (시각화용)
-        sigma_min = tf.reduce_min(sigma)
-        sigma_max = tf.reduce_max(sigma)
-        normalized_sigma = (sigma - sigma_min) / (tf.maximum(sigma_max - sigma_min, 1e-5))
+        # # 시그마 값을 0-1 범위로 정규화 (시각화용)
+        # sigma_min = tf.reduce_min(sigma)
+        # sigma_max = tf.reduce_max(sigma)
+        # normalized_sigma = (sigma - sigma_min) / (tf.maximum(sigma_max - sigma_min, 1e-5))
         
-        axes[1, idx + 1].imshow(normalized_sigma.numpy(), cmap='inferno')  # 불확실성은 다른 컬러맵 사용
+        axes[1, idx + 1].imshow(pred_sigma_vis.numpy(), cmap='inferno', vmin=0., vmax=1.)  # 불확실성은 다른 컬러맵 사용
         axes[1, idx + 1].set_title(f'Uncertainty Scale {idx}')
         axes[1, idx + 1].axis('off')
 

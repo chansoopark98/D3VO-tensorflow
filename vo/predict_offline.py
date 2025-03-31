@@ -1,11 +1,11 @@
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 import numpy as np
 import yaml
 import sys
 import os
 import cv2
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-from model.depth_net import DispNet
+from model.depth_net import DispNetSigma
 from model.pose_net import PoseNet, PoseNetExtra
 from utils.visualization import Visualizer
 from eval import EvalTrajectory, pose_axis_angle_vec2mat
@@ -23,28 +23,28 @@ if __name__ == '__main__':
         image_shape = (config['Train']['img_h'], config['Train']['img_w'])
         batch_size = config['Train']['batch_size']
 
-        depth_net = DispNet(image_shape=image_shape, batch_size=batch_size, prefix='disp_resnet')
-        dispnet_input_shape = (config['Train']['batch_size'],
-                               config['Train']['img_h'], config['Train']['img_w'], 3)
-        # depth_net(tf.random.normal((1, *image_shape, 3)))
-        depth_net.build(dispnet_input_shape)
-        _ = depth_net(tf.random.normal(dispnet_input_shape))
-        exp_name = 'mode=axisAngle_res=(480, 640)_ep=31_bs=16_initLR=0.0001_endLR=1e-05'
-        depth_net.load_weights(f'./weights/vo/{exp_name}/depth_net_epoch_24_model.weights.h5')
+        # depth_net = DispNetSigma(image_shape=image_shape, batch_size=batch_size, prefix='disp_resnet')
+        # dispnet_input_shape = (config['Train']['batch_size'],
+        #                        config['Train']['img_h'], config['Train']['img_w'], 3)
+        # # depth_net(tf.random.normal((1, *image_shape, 3)))
+        # depth_net.build(dispnet_input_shape)
+        # _ = depth_net(tf.random.normal(dispnet_input_shape))
+        # exp_name = 'mode=axisAngle_res=(480, 640)_ep=31_bs=16_initLR=0.0001_endLR=1e-05_prefix=d3vo_test_mars-redwood'
+        # depth_net.load_weights(f'./weights/vo/{exp_name}/depth_net_epoch_26_model.weights.h5')
 
-        pose_net = PoseNetExtra(image_shape=image_shape, batch_size=batch_size, prefix='mono_posenet')
-        posenet_input_shape = [(batch_size, *image_shape, 6)]
-        pose_net.build(posenet_input_shape)
-        pose_net.load_weights(f'./weights/vo/{exp_name}/pose_net_epoch_24_model.weights.h5')
+        # pose_net = PoseNetExtra(image_shape=image_shape, batch_size=batch_size, prefix='mono_posenet')
+        # posenet_input_shape = [(batch_size, *image_shape, 6)]
+        # pose_net.build(posenet_input_shape)
+        # pose_net.load_weights(f'./weights/vo/{exp_name}/pose_net_epoch_26_model.weights.h5')
 
-        eval_tool = EvalTrajectory(depth_model=depth_net, pose_model=pose_net, config=config)
+        # eval_tool = EvalTrajectory(depth_model=depth_net, pose_model=pose_net, config=config)
 
         data_loader = DataLoader(config=config)
         test_tqdm = tqdm(data_loader.test_dataset, total=data_loader.num_test_samples)
 
         visualizer = Visualizer(draw_plane=False, is_record=False, video_fps=30, video_name="visualization.mp4")
 
-        poses = np.load('./poses.npy')
+        poses = np.load('./output_pose.npy')
         print(poses.shape)
 
         for idx, (ref_images, target_image, intrinsics) in enumerate(test_tqdm):

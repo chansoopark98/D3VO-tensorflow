@@ -1,5 +1,5 @@
 Directory:
-  exp_name: Resnet18_nyu_loss-1
+  exp_name: Resnet18_nyu_loss-2
   data_dir: ./depth/data/ # Directory containing the dataset
   log_dir: ./tensorboard  # TensorBoard log directory
   weights: ./weights      # Checkpoint weights directory
@@ -10,7 +10,7 @@ Dataset: # True is using the dataset, False is not using the dataset
     train: True  
     valid: True  
   Diode:
-    train: False  
+    train: True  
     valid: False 
   DIML:
     train: False
@@ -19,10 +19,10 @@ Dataset: # True is using the dataset, False is not using the dataset
     train: False 
     valid: False 
   Custom:
-    train: False
-    valid: False
+    train: True
+    valid: True
   Redwood:
-    train: False
+    train: True
     valid: False
 
 Train:

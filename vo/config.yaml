@@ -1,5 +1,5 @@
 Directory:
-  exp_name: d3vo_test_mars-redwood
+  exp_name: d3vo_test_mars-redwood_vanilla
   data_dir: ./vo/data/
   log_dir: ./tensorboard
   weights: ./weights
