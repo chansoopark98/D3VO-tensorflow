@@ -10,7 +10,6 @@ class Learner(object):
         self.pose_net = pose_model
         self.config = config
 
-        # 예시 하이퍼파라미터
         self.num_scales = 4
         self.num_source = self.config['Train']['num_source'] # 2
         
@@ -55,7 +54,6 @@ class Learner(object):
         return loss
 
     def ssim(self, x, y):
-        # 현재 코드 동일
         x = tf.pad(x, [[0,0],[1,1],[1,1],[0,0]], mode='REFLECT')
         y = tf.pad(y, [[0,0],[1,1],[1,1],[0,0]], mode='REFLECT')
 
@@ -77,11 +75,12 @@ class Learner(object):
         return SSIM_loss
 
     def get_smooth_loss(self, disp, img):
+        """
+            Edge-aware smoothness: disp gradients * exp(-|img grads|)
+        """
         disp = tf.cast(disp, tf.float32)
         img = tf.cast(img, tf.float32)
-        """
-        Edge-aware smoothness: disp gradients * exp(-|img grads|)
-        """
+
         disp_mean = tf.reduce_mean(disp, axis=[1,2], keepdims=True) + 1e-7
         norm_disp = disp / disp_mean
 
@@ -102,7 +101,7 @@ class Learner(object):
     @tf.function(jit_compile=True)
     def rescale_intrinsics(self, intrinsics, original_height, original_width, target_height, target_width):
         """
-        intrinsics(tf.Tensor): [B, 3, 3]
+            intrinsics(tf.Tensor): [B, 3, 3]
         """
         # float 변환
         orig_h = tf.cast(original_height, tf.float32)
@@ -126,8 +125,7 @@ class Learner(object):
         cx_new = cx * w_scale
         cy_new = cy * h_scale
 
-        # skew는 제외(혹은 0으로 둔다고 가정)
-        # 보통 pinhole 모델에서는 skew가 0이므로, 여기서는 0으로 세팅
+        # skew는 제외(0으로 둔다고 가정)
         skew_0 = tf.zeros_like(fx_new)  # (B,)
         skew_1 = tf.zeros_like(fy_new)  # (B,)
 
@@ -135,11 +133,10 @@ class Learner(object):
         row0 = tf.stack([fx_new, skew_0, cx_new], axis=1)  # (B, 3)
         row1 = tf.stack([skew_1, fy_new, cy_new], axis=1)  # (B, 3)
         # 마지막 행은 [0, 0, 1]
-        # -> batch 크기에 맞춰 tile 또는 stack
         # shape: (B, 3)
         row2 = tf.tile(tf.constant([[0., 0., 1.]], tf.float32), [tf.shape(intrinsics)[0], 1])
 
-        # 최종 (B, 3, 3)으로 스택
+        # 최종 (B, 3, 3)으로 stack
         intrinsics_rescaled = tf.stack([row0, row1, row2], axis=1)
         return intrinsics_rescaled
 
@@ -249,7 +246,7 @@ class Learner(object):
                 if self.auto_mask:
                     scaled_src = tf.image.resize(curr_src, [h_s, w_s], 
                                                  method=tf.image.ResizeMethod.BILINEAR)
-                    # 여기도 동일하게 차원 확장 적용
+
                     scaled_src = scaled_src * curr_a_expanded + curr_b_expanded
                     identity_reproj_loss = self.compute_reprojection_loss(scaled_src, scaled_tgts[s], curr_sigma)
                     identity_reprojection_list.append(identity_reproj_loss)
@@ -259,7 +256,6 @@ class Learner(object):
             if self.auto_mask:
                 identity_reprojection_losses = tf.concat(identity_reprojection_list, axis=3)
                 
-                # PyTorch 구현처럼 랜덤 노이즈 추가 (타이 브레이킹)
                 identity_reprojection_losses += tf.random.normal(
                     tf.shape(identity_reprojection_losses), 
                     mean=0.0, 

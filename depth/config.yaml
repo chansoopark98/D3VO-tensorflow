@@ -1,5 +1,5 @@
 Directory:
-  exp_name: Resnet18_nyu_diode_0-1
+  exp_name: Resnet18_nyu_loss-1
   data_dir: ./depth/data/ # Directory containing the dataset
   log_dir: ./tensorboard  # TensorBoard log directory
   weights: ./weights      # Checkpoint weights directory
@@ -10,7 +10,7 @@ Dataset: # True is using the dataset, False is not using the dataset
     train: True  
     valid: True  
   Diode:
-    train: True  
+    train: False  
     valid: False 
   DIML:
     train: False
@@ -19,16 +19,16 @@ Dataset: # True is using the dataset, False is not using the dataset
     train: False 
     valid: False 
   Custom:
-    train: True
+    train: False
     valid: False
   Redwood:
-    train: True
+    train: False
     valid: False
 
 Train:
   mode: 'metric' # 'relative' (normalized depth) or 'metric' (absolute depth)
   use_shuffle: True # Whether to shuffle training data
-  train_plot_interval: 200 # Interval for plotting during training
+  train_plot_interval: 50 # Interval for plotting during training
   valid_plot_interval: 10 # Interval for plotting during validation
   save_freq: 2 # Frequency for saving checkpoints
   min_depth: 0.1  # Minimum depth value for normalization
@@ -39,7 +39,7 @@ Train:
   weight_decay: 0.00001  # Weight decay for optimizer
   batch_size: 32  # Training batch size
   epoch: 31  # Total number of epochs
-  init_lr: 0.0001  # Initial learning rate 
+  init_lr: 0.0002  # Initial learning rate 
   final_lr: 0.00001 # Final learning rate after warmup
   power: 0.9  # Learning rate scheduler power factor
 

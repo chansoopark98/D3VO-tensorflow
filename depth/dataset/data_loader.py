@@ -52,8 +52,9 @@ class DataLoader(object):
         train_datasets = []
         valid_datasets = []
         
+        self.root = '/home/park-ubuntu/park/datasets/depth/'
         if self.config['Dataset']['Nyu_depth_v2']:
-            dataset_name = os.path.join(self.config['Directory']['data_dir'], 'nyu_depth_v2_tfrecord')
+            dataset_name = os.path.join(self.root, 'nyu_depth_v2_tfrecord')
             dataset = TFRecordLoader(root_dir=dataset_name, is_train=True,
                                      is_valid=True, image_size=(None, None), depth_dtype=tf.float32,
                                      use_intrinsic=True)
@@ -72,7 +73,7 @@ class DataLoader(object):
                 self.num_valid_samples += dataset.valid_samples
 
         if self.config['Dataset']['Diode']:
-            dataset_name = os.path.join(self.config['Directory']['data_dir'], 'diode_tfrecord')
+            dataset_name = os.path.join(self.root, 'diode_tfrecord')
             dataset = TFRecordLoader(root_dir=dataset_name, is_train=True,
                                      is_valid=True, image_size=(None, None), depth_dtype=tf.float32,
                                      use_intrinsic=True)
@@ -84,7 +85,7 @@ class DataLoader(object):
                 self.num_valid_samples += dataset.valid_samples
             
         if self.config['Dataset']['DIML']:
-            dataset_name = os.path.join(self.config['Directory']['data_dir'], 'diml_tfrecord')
+            dataset_name = os.path.join(self.root, 'diml_tfrecord')
             dataset = TFRecordLoader(root_dir=dataset_name, is_train=True,
                                      is_valid=True, image_size=(None, None), depth_dtype=tf.float16)
             if self.config['Dataset']['DIML']['train']:
@@ -95,7 +96,7 @@ class DataLoader(object):
                 self.num_valid_samples += dataset.valid_samples
 
         if self.config['Dataset']['Hypersim']:
-            dataset_name = os.path.join(self.config['Directory']['data_dir'], 'hypersim_tfrecord')
+            dataset_name = os.path.join(self.root, 'hypersim_tfrecord')
             dataset = TFRecordLoader(root_dir=dataset_name, is_train=True,
                                      is_valid=True, image_size=(None, None), depth_dtype=tf.float16)
             if self.config['Dataset']['Hypersim']['train']:
@@ -106,7 +107,7 @@ class DataLoader(object):
                 self.num_valid_samples += dataset.valid_samples
         
         if self.config['Dataset']['Custom']:
-            dataset_name = os.path.join(self.config['Directory']['data_dir'], 'custom_tfrecord')
+            dataset_name = os.path.join(self.root, 'custom_tfrecord')
             dataset = CustomLoader(config=self.config)
             if self.config['Dataset']['Custom']['train']:
 
@@ -117,7 +118,7 @@ class DataLoader(object):
                 self.num_valid_samples += dataset.valid_samples
 
         if self.config['Dataset']['Redwood']:
-            dataset_name = os.path.join(self.config['Directory']['data_dir'], 'redwood_tfrecord')
+            dataset_name = os.path.join(self.root, 'redwood_tfrecord')
             dataset = RedwoodLoader(config=self.config)
             if self.config['Dataset']['Redwood']['train']:
                 train_datasets.append(dataset.train_dataset)

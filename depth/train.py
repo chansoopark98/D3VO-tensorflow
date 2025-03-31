@@ -134,13 +134,13 @@ class Trainer(object):
                 - List of predicted depth tensors at different scales.
         """
         with tf.GradientTape() as tape:
-            loss_dict, pred_depths = self.learner.forward_step(rgb, depth, intrinsic, training=True)
+            loss_dict, pred_depths, pred_sigmas = self.learner.forward_step(rgb, depth, intrinsic, training=True)
             total_loss = sum(loss_dict.values())
             scaled_loss = self.optimizer.scale_loss(total_loss)
 
         scaled_gradients = tape.gradient(scaled_loss, self.model.trainable_variables)
         self.optimizer.apply_gradients(zip(scaled_gradients, self.model.trainable_variables))
-        return loss_dict, pred_depths
+        return loss_dict, pred_depths, pred_sigmas
     
     @tf.function(jit_compile=True)
     def validation_step(self, rgb: tf.Tensor, depth: tf.Tensor, intrinsic) -> Tuple[Dict[str, tf.Tensor], List[tf.Tensor]]:
@@ -156,8 +156,8 @@ class Trainer(object):
                 - Loss dictionary containing smooth, log, and L1 losses.
                 - List of predicted depth tensors at different scales.
         """
-        loss_dict, pred_depths = self.learner.forward_step(rgb, depth, intrinsic, training=False)
-        return loss_dict, pred_depths
+        loss_dict, pred_depths, pred_sigmas = self.learner.forward_step(rgb, depth, intrinsic, training=False)
+        return loss_dict, pred_depths, pred_sigmas
     
     @tf.function()
     def update_train_metric(self, loss_dict: Dict[str, tf.Tensor]) -> None:
@@ -222,7 +222,7 @@ class Trainer(object):
             train_tqdm.set_description('Training   || Epoch : {0} ||'.format(epoch,
                                                                              round(float(self.optimizer.learning_rate.numpy()), 8)))
             for idx, (rgb, depth, intrinsic) in enumerate(train_tqdm):
-                train_loss_result, pred_train_depths = self.train_step(rgb, depth, intrinsic)
+                train_loss_result, pred_train_depths, pred_sigmas = self.train_step(rgb, depth, intrinsic)
 
                 # Update train metrics
                 self.update_train_metric(train_loss_result)
@@ -235,6 +235,7 @@ class Trainer(object):
 
                     train_depth_plot = plot_images(image=target_image,
                                                    pred_depths=pred_train_depths,
+                                                   pred_sigmas=pred_sigmas,
                                                    gt_depth=depth,
                                                    mode=self.config['Train']['mode'],
                                                    depth_max=self.config['Train']['max_depth'])
@@ -267,7 +268,7 @@ class Trainer(object):
                               total=self.valid_samples)
             valid_tqdm.set_description('Validation || ')
             for idx, (rgb, depth, intrinsic) in enumerate(valid_tqdm):
-                valid_loss_result, pred_valid_depths = self.validation_step(rgb, depth, intrinsic)
+                valid_loss_result, pred_valid_depths, pred_sigmas = self.validation_step(rgb, depth, intrinsic)
 
                 # Update valid metrics
                 self.update_valid_metric(valid_loss_result, pred_valid_depths[0], depth)
@@ -279,6 +280,7 @@ class Trainer(object):
                     target_image = self.data_loader.denormalize_image(rgb)
                     valid_depth_plot = plot_images(image=target_image,
                                                    pred_depths=pred_valid_depths,
+                                                   pred_sigmas=pred_sigmas,
                                                    gt_depth=depth,
                                                    mode=self.config['Train']['mode'],
                                                    depth_max=self.config['Train']['max_depth'])
@@ -327,6 +329,9 @@ class Trainer(object):
             self.valid_depth_metrics.reset_states()
 
 if __name__ == '__main__':
+    from util.set_seed import set_seed
+    set_seed(seed=42)
+
     with open('./depth/config.yaml', 'r') as file:
         config = yaml.safe_load(file)
 

@@ -108,21 +108,86 @@ class DepthLearner:
         masked_abs_diff = tf.boolean_mask(abs_diff, valid_mask)
         return tf.reduce_mean(masked_abs_diff)
 
-    # @tf.function(jit_compile=True)
+    def silog_loss_with_uncertainty(pred_depth: tf.Tensor,
+                                pred_log_var: tf.Tensor,
+                                true_depth: tf.Tensor,
+                                valid_mask: tf.Tensor,
+                                variance_focus: float = 0.5,
+                                eps: float = 1e-6) -> tf.Tensor:
+        """
+        불확실성을 고려한 scale-invariant (SILog) 손실 함수입니다.
+        
+        Args:
+            pred_depth (tf.Tensor): 모델이 예측한 깊이 (예: 단안 깊이).
+            pred_log_var (tf.Tensor): 모델이 예측한 로그 분산 (log(sigma^2)).
+            true_depth (tf.Tensor): ground truth 깊이.
+            valid_mask (tf.Tensor): 손실 계산에 사용할 유효 픽셀에 대한 boolean 마스크.
+            variance_focus (float, optional): SILog의 variance focus 파라미터 (기본값 0.5).
+            eps (float, optional): 수치 안정성을 위한 작은 값 (기본값 1e-6).
+        
+        Returns:
+            tf.Tensor: 계산된 불확실성 인식 SILog 손실 값.
+        """
+        # 예측 깊이가 eps 이상이 되도록 제한
+        pred = tf.maximum(pred_depth, eps)
+        
+        # 유효 마스크 적용 (유효한 픽셀만 남김)
+        pred = tf.boolean_mask(pred, valid_mask)
+        true = tf.boolean_mask(true_depth, valid_mask)
+        log_var = tf.boolean_mask(pred_log_var, valid_mask)
+        
+        # 로그 깊이 잔차 계산: d = log(pred) - log(true)
+        d = tf.math.log(pred) - tf.math.log(true)
+        # 각 픽셀에 대해 1/sigma^2 역할 (불확실성이 클수록 오차의 기여도를 줄임)
+        inv_var = tf.exp(-log_var)
+        
+        # 가중치가 적용된 평균 제곱 잔차 및 가중치가 적용된 평균 잔차 계산
+        weighted_mse = tf.reduce_mean(inv_var * tf.square(d))
+        weighted_mean = tf.reduce_mean(inv_var * d)
+        
+        # SILog 손실 계산 (variance focus를 적용)
+        silog_unc = weighted_mse - variance_focus * tf.square(weighted_mean)
+        
+        # 예측된 로그 분산에 대한 패널티 항 (과도한 불확실성 예측 방지)
+        uncertainty_penalty = 0.5 * tf.reduce_mean(log_var)
+        
+        # 최종 손실은 SILog 항의 제곱근에 불확실성 패널티를 더한 형태입니다.
+        loss = tf.sqrt(silog_unc) + uncertainty_penalty
+        return loss
+
+    def depth_uncertainty_loss(self, depth_pred: tf.Tensor,
+                            log_var: tf.Tensor,
+                            depth_gt: tf.Tensor,
+                            valid_mask: tf.Tensor
+                            ) -> tf.Tensor:
+        """
+        예측된 깊이와 불확실성(로그 분산)을 이용해 손실 함수를 계산합니다.
+        
+        Args:
+            depth_pred (tf.Tensor): 예측된 깊이 맵
+            log_var (tf.Tensor): 예측된 로그 분산 (log(σ²))
+            depth_gt (tf.Tensor): 실제 깊이 맵
+            valid_mask (tf.Tensor): 유효한 픽셀 마스크
+            
+        Returns:
+            tf.Tensor: 불확실성을 고려한 평균 손실 값
+        """
+        # 유효한 픽셀만 선택
+        depth_pred = tf.boolean_mask(depth_pred, valid_mask)
+        depth_gt = tf.boolean_mask(depth_gt, valid_mask)
+        log_var = tf.boolean_mask(log_var, valid_mask)
+        
+        # 예측 깊이와 실제 깊이 사이의 제곱 오차 계산
+        sq_error = tf.square(depth_pred - depth_gt)
+        
+        # 불확실성을 고려한 손실: exp(-log_var) * (오차) + log_var
+        # exp(-log_var)는 정밀도(precision)를 의미하며, 불확실할수록 작은 값
+        loss = tf.exp(-log_var) * sq_error + log_var
+        
+        return tf.reduce_mean(loss)
+
     def silog_loss(self, prediction: tf.Tensor, target: tf.Tensor, valid_mask: tf.Tensor,
                    variance_focus: float = 0.5) -> tf.Tensor:
-        """
-        Computes the scale-invariant logarithmic (SILog) loss.
-
-        Args:
-            prediction (tf.Tensor): Predicted depth map.
-            target (tf.Tensor): Ground truth depth map.
-            valid_mask (tf.Tensor): Boolean mask indicating valid pixels.
-            variance_focus (float): Weight for the variance term in SILog loss (default: 0.5).
-
-        Returns:
-            tf.Tensor: Scalar SILog loss value.
-        """
         eps = 1e-6
         prediction = tf.maximum(prediction, eps)
 
@@ -135,7 +200,7 @@ class DepthLearner:
         silog_expr = d2_mean - variance_focus * tf.square(d_mean)
 
         return tf.sqrt(silog_expr)
-
+    
     # @tf.function(jit_compile=True)
     def multi_scale_loss(self, pred_depths: List[tf.Tensor], pred_sigmas, gt_depth: tf.Tensor,
                          rgb: tf.Tensor, valid_mask: tf.Tensor) -> Dict[str, tf.Tensor]:
@@ -150,16 +215,28 @@ class DepthLearner:
 
         for i in range(self.num_scales):
             pred_depth = pred_depths[i]
+            pred_sigma = pred_sigmas[i]
 
             pred_depth_resized = tf.image.resize(
                 pred_depth, original_shape, method=tf.image.ResizeMethod.BILINEAR
             )
 
+            pred_sigma_resized = tf.image.resize(
+                pred_sigma, original_shape, method=tf.image.ResizeMethod.BILINEAR
+            )
+
+
             resized_disp = self.scaled_depth_to_disp(pred_depth_resized)
 
+            # Calculate losses with uncertainty
             smooth_losses += self.get_smooth_loss(resized_disp, rgb) * alpha[i]
-            log_losses += self.silog_loss(pred_depth_resized, gt_depth, valid_mask) * alpha[i]
-            # l1_losses += self.l1_loss(pred_depth_resized, gt_depth, valid_mask) * alpha[i]
+            log_losses += self.depth_uncertainty_loss(
+                pred_depth_resized,
+                pred_sigma_resized,
+                gt_depth,
+                valid_mask
+            ) * alpha[i]
+
 
         return {
             'smooth_loss': smooth_losses * smooth_loss_factor,
@@ -197,4 +274,4 @@ class DepthLearner:
             valid_mask=valid_mask
         )
 
-        return loss_dict, pred_depths
+        return loss_dict, pred_depths, pred_sigmas

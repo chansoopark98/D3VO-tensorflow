@@ -6,7 +6,7 @@ import tensorflow as tf
 class RedwoodLoader(object):
     def __init__(self, config):
         self.config = config
-        self.root_dir = '/media/park-ubuntu/park_cs/redwood'
+        self.root_dir = '/media/park-ubuntu/park_cs/slam_data/redwood'
         self.image_size = (self.config['Train']['img_h'], self.config['Train']['img_w'])
         self.train_dir = os.path.join(self.root_dir, 'train')
         self.valid_dir = os.path.join(self.root_dir, 'valid')
