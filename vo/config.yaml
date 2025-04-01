@@ -1,5 +1,5 @@
 Directory:
-  exp_name: d3vo_test_mars-redwood_vanilla
+  exp_name: d3vo_test_mars-redwood_vanilla_poseBranch
   data_dir: ./vo/data/
   log_dir: ./tensorboard
   weights: ./weights
@@ -30,7 +30,7 @@ Train:
   img_h: 480 #480
   weight_decay: 0.00001
   beta1: 0.9
-  batch_size: 16 # 1
+  batch_size: 32 # 1
   epoch: 31
   init_lr: 0.0001
   final_lr: 0.00001

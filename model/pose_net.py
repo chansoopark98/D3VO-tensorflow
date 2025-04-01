@@ -50,8 +50,20 @@ class PoseNetAB(tf_keras.Model):
         ])
 
         self.shared_features_3 = tf_keras.Sequential([
-            std_conv(3, 6, 1, use_bias=True, name='shared_conv3'),
-        ]) 
+            std_conv(3, 256, 1, use_bias=True, name='shared_conv3'),
+        ])
+
+        # rotation branch
+        self.rotation_conv_seq = tf_keras.Sequential([
+            tf_keras.layers.Dense(128, activation='relu', name='rotation_dense1'),
+            tf_keras.layers.Dense(3, name='rotation_dense3')
+        ] )
+
+        # translation branch
+        self.translation_conv_seq = tf_keras.Sequential([
+            tf_keras.layers.Dense(128, activation='relu', name='translation_dense1'),
+            tf_keras.layers.Dense(3, name='translation_dense3')
+        ] )
 
         # 밝기 조정 파라미터 브랜치 (a와 b)
         self.a_conv = tf_keras.layers.Conv2D(
@@ -72,7 +84,13 @@ class PoseNetAB(tf_keras.Model):
         shared_2 = self.shared_features_2(shared_1)
         shared_3 = self.shared_features_3(shared_2)
 
-        out_pose = tf.reduce_mean(shared_3, axis=[1, 2], keepdims=False)
+        out_feat = tf.reduce_mean(shared_3, axis=[1, 2], keepdims=False)
+
+        out_rot = self.rotation_conv_seq(out_feat)
+        out_trans = self.translation_conv_seq(out_feat)
+
+        out_pose = tf.concat([out_rot, out_trans], axis=-1)
+
 
         out_a = self.a_conv(shared_2)
         out_a = tf.math.softplus(out_a) # softplus activation

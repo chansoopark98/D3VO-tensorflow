@@ -6,9 +6,9 @@ import numpy as np
 class MonoVO:
 	def __init__(self, intrinsic):
 		self.intrinsic = intrinsic
-		self.mp = Map()
+		self.mp = Map(alpha=0.5, num_kf=15)
 		self.nn = Networks((480, 640))
-
+		
 	def process_frame(self, frame, optimize=True):
 		"""Process a single frame with D3VO."""
 		# Run DepthNet to get depth map

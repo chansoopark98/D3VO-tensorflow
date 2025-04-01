@@ -24,14 +24,14 @@ if __name__ == '__main__':
         # depth_net(tf.random.normal((1, *image_shape, 3)))
         depth_net.build(dispnet_input_shape)
         _ = depth_net(tf.random.normal(dispnet_input_shape))
-        exp_name = 'mode=axisAngle_res=(480, 640)_ep=31_bs=16_initLR=0.0001_endLR=1e-05_prefix=d3vo_test_mars-redwood'
-        depth_net.load_weights(f'./weights/vo/{exp_name}/depth_net_epoch_26_model.weights.h5')
+        exp_name = 'mode=axisAngle_res=(480, 640)_ep=31_bs=16_initLR=0.0001_endLR=1e-05_prefix=d3vo_test_mars-redwood_vanilla'
+        depth_net.load_weights(f'./weights/vo/{exp_name}/depth_net_epoch_30_model.weights.h5')
 
         pose_net = PoseNetAB(image_shape=image_shape, batch_size=batch_size, prefix='mono_posenet')
         posenet_input_shape = (batch_size, *image_shape, 6)
         pose_net.build(posenet_input_shape)
         _ = pose_net(tf.random.normal(posenet_input_shape))
-        pose_net.load_weights(f'./weights/vo/{exp_name}/pose_net_epoch_26_model.weights.h5')
+        pose_net.load_weights(f'./weights/vo/{exp_name}/pose_net_epoch_30_model.weights.h5')
 
         # export model
         export_dir = './weights/vo/export'

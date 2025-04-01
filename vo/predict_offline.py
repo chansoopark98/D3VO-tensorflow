@@ -6,7 +6,7 @@ import os
 import cv2
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from model.depth_net import DispNetSigma
-from model.pose_net import PoseNet, PoseNetExtra
+# from model.pose_net import PoseNet, PoseNetExtra
 from utils.visualization import Visualizer
 from eval import EvalTrajectory, pose_axis_angle_vec2mat
 
