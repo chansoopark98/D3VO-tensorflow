@@ -22,3 +22,30 @@ D3VO tensorflow implementation
  <img src ="https://img.shields.io/badge/Pandas-150458.svg?&style=for-the-badge&logo=Pandas&logoColor=white"/>
  <br>
 </p>
+
+
+
+# Installation
+
+## 1. Setup virtual environment
+```
+conda create -n vslam python=3.10
+conda activate vslam
+
+## 2. Setup g2opy
+```
+cd g2opy
+mkdir build
+cd build
+cmake ..
+make -j8
+cd ..
+pip install setuptools==58.2.0
+python setup.py install
+cd ../
+pip install -r requierments.txt
+```
+
+## 2. 
+
+
