@@ -48,11 +48,13 @@ class Trainer(object):
         self.depth_net.build(dispnet_input_shape)
         _ = self.depth_net(tf.random.normal(dispnet_input_shape))
 
-        self.depth_net.load_weights('./assets/weights/depth/metric_epoch_2_model.weights.h5', skip_mismatch=True)
+        self.depth_net.load_weights('./assets/weights/vo/depth_net_epoch_24_model.weights.h5')
 
         self.pose_net = PoseNetAB(image_shape=image_shape, batch_size=self.batch_size, prefix='mono_posenet')
         posenet_input_shape = [(self.batch_size, *image_shape, 6)]
         self.pose_net.build(posenet_input_shape)
+
+        self.pose_net.load_weights('./assets/weights/vo/pose_net_epoch_24_model.weights.h5')
         
         # 2. Dataset
         self.data_loader = DataLoader(config=self.config)

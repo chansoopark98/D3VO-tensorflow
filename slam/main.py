@@ -25,9 +25,9 @@ def offline_vo(cap, save_path):
 			print("\n*** frame %d/%d ***" % (i, CNT))
 			monoVO.process_frame(frame)
 
-			if i>0 and i % 30 == 0:
-				monoVO.mp.global_bundle_adjustment(intrinsic)
-				
+			# if i>0 and i % 30 == 0:
+			# 	monoVO.mp.global_bundle_adjustment(intrinsic)
+
 			# if i >= 1:
 
 				# prev_rel_pose = monoVO.mp.frames[-2].pose

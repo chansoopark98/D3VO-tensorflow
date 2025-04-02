@@ -12,7 +12,7 @@ class MarsLoggerHandler(object):
     def __init__(self, config):
         self.config = config
         # self.root_dir = os.path.join(self.config['Directory']['data_dir'], 'mars_logger')
-        self.root_dir = '/home/park-ubuntu/park/datasets/vo/mars_logger'
+        self.root_dir = '/media/park-ubuntu/park_cs/slam_data/mars_logger'
         self.image_size = (self.config['Train']['img_h'], self.config['Train']['img_w'])
         self.num_source = self.config['Train']['num_source'] # 1
         self.imu_seq_len = self.config['Train']['imu_seq_len'] # 10
@@ -31,10 +31,6 @@ class MarsLoggerHandler(object):
 
         # Rescale intrinsic matrix
         resized_intrinsic = self._rescale_intrinsic(current_intrinsic, self.save_image_size, self.original_image_size)
-
-        # Read metadata
-        # timestamps_ns = camera_data['Timestamp[nanosec]'].values  # Extract timestamps in nanoseconds
-        # timestamps_s = timestamps_ns / 1e9  # Convert to seconds
 
         # Ensure output directory exists
         if not os.path.exists(rgb_save_path):
@@ -96,13 +92,15 @@ class MarsLoggerHandler(object):
 
         samples = []
         for t in range(self.num_source, length - self.num_source, step):
-            sample = {
-                'source_left': rgb_files[t-1], # str
-                'target_image': rgb_files[t], # str
-                'source_right': rgb_files[t+1], # str
-                'intrinsic': intrinsic # np.ndarray (3, 3)
-            }
-            samples.append(sample)
+            for i in range(self.num_source):
+                sample = {
+                    'source_left': rgb_files[t - self.num_source + i], # str
+                    'target_image': rgb_files[t], # str
+                    'source_right': rgb_files[t + self.num_source - i], # str
+                    'intrinsic': intrinsic # np.ndarray (3, 3)
+                }
+                samples.append(sample)
+        
         return samples
             
     def generate_datasets(self, fold_dir, shuffle=False, is_test=False):

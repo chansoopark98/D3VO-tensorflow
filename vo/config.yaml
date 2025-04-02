@@ -1,5 +1,5 @@
 Directory:
-  exp_name: d3vo_test_mars-redwood_vanilla_newData
+  exp_name: d3vo_test_mars-redwood_vanilla_step2_fineTune
   data_dir: ./vo/data/
   log_dir: ./tensorboard
   weights: ./weights
@@ -17,7 +17,7 @@ Train:
   valid_plot_interval: 20
   save_freq: 2
   vis_batch_size: 1
-  num_source: 1 # num_source = 1 >> image pair (t-1, t, t+1) / 2 >> image pair (t-2, t-1, t, t+1, t+2) default: 1
+  num_source: 2
   num_scale: 4
   imu_seq_len: 10
   min_depth: 0.1

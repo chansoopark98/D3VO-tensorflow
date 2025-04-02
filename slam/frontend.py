@@ -5,19 +5,42 @@ import cv2
 NUM_FEATURE = 3000
 FEATURE_QUALITY = 0.007 # 0.01
 
+# def extract_features(img):
+# 	"""Extract ORB features from given image, return keypoints and their descriptors."""
+# 	# detection
+# 	orb = cv2.ORB_create()
+# 	pts = cv2.goodFeaturesToTrack(np.mean(img, axis=2).astype(np.uint8), NUM_FEATURE, qualityLevel=FEATURE_QUALITY, minDistance=7)
+
+# 	# extraction
+# 	kps = [cv2.KeyPoint(x=f[0][0], y=f[0][1], size=20) for f in pts]
+# 	kps, des = orb.compute(img, kps)
+
+# 	# return pts and des
+# 	return np.array([(int(kp.pt[0]), int(kp.pt[1])) for kp in kps]), des
+
 def extract_features(img):
-	"""Extract ORB features from given image, return keypoints and their descriptors."""
-	# detection
-	orb = cv2.ORB_create()
-	pts = cv2.goodFeaturesToTrack(np.mean(img, axis=2).astype(np.uint8), NUM_FEATURE, qualityLevel=FEATURE_QUALITY, minDistance=7)
-
-	# extraction
-	kps = [cv2.KeyPoint(x=f[0][0], y=f[0][1], size=20) for f in pts]
-	kps, des = orb.compute(img, kps)
-
-	# return pts and des
-	return np.array([(int(kp.pt[0]), int(kp.pt[1])) for kp in kps]), des
-
+    """Extract ORB features from given image, return keypoints and their descriptors."""
+    # Proper conversion to grayscale (BGR to GRAY)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    
+    # Method 1: Full ORB detector and descriptor
+    orb = cv2.ORB_create(nfeatures=NUM_FEATURE, 
+                         scaleFactor=1.2,
+                         nlevels=8,
+                         edgeThreshold=31,
+                         firstLevel=0,
+                         WTA_K=2,
+                         patchSize=31)
+    kps, des = orb.detectAndCompute(gray, None)
+    
+    # Filter out keypoints with low response if needed
+    if len(kps) > NUM_FEATURE:
+        kps = sorted(kps, key=lambda x: x.response, reverse=True)[:NUM_FEATURE]
+        # Recompute descriptors for the filtered keypoints
+        kps, des = orb.compute(gray, kps)
+        
+    # Return keypoints as (x, y) coordinate pairs and descriptors
+    return np.array([(int(kp.pt[0]), int(kp.pt[1])) for kp in kps]), des
 
 def match_frame_kps(f1, f2):
 	"""Match ORB keypoints in the given frames"""

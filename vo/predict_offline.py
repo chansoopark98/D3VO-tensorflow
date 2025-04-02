@@ -21,7 +21,7 @@ if __name__ == '__main__':
         config['Train']['batch_size'] = 1
         num_source = config['Train']['num_source']
         image_shape = (config['Train']['img_h'], config['Train']['img_w'])
-        batch_size = config['Train']['batch_size']
+        batch_size = config['Train']['batch_size'] 
 
         # depth_net = DispNetSigma(image_shape=image_shape, batch_size=batch_size, prefix='disp_resnet')
         # dispnet_input_shape = (config['Train']['batch_size'],
