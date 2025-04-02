@@ -19,8 +19,6 @@ class DataLoader(object):
         self.image_size = (config['Train']['img_h'], config['Train']['img_w'])
         self.num_source = config['Train']['num_source']
         self.auto_opt = tf.data.AUTOTUNE
-        self.mean = tf.constant([0.485, 0.456, 0.406], dtype=tf.float32)
-        self.std = tf.constant([0.229, 0.224, 0.225], dtype=tf.float32)
 
         self.train_dataset, self.valid_dataset, self.test_dataset = self._load_dataset()
         self.num_train_samples = self.num_train_samples // self.batch_size

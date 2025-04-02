@@ -6,8 +6,11 @@ import numpy as np
 class MonoVO:
 	def __init__(self, intrinsic):
 		self.intrinsic = intrinsic
-		self.mp = Map(alpha=0.5, num_kf=15)
-		self.nn = Networks((480, 640))
+		self.mp = Map()
+		self.nn = Networks(depth_weight_path='./assets/weights/vo/depth_net_epoch_24_model.weights.h5',
+							pose_weight_path='./assets/weights/vo/pose_net_epoch_24_model.weights.h5',
+							image_shape=(480, 640))
+
 		
 	def process_frame(self, frame, optimize=True):
 		"""Process a single frame with D3VO."""
@@ -29,6 +32,8 @@ class MonoVO:
 		# Run backend optimization
 		if optimize:
 			self.mp.optimize(self.intrinsic)
+		
+		return depth, uncertainty, self.mp.frames[-1].pose, a, b
 
 	def frontend(self, frame, depth, uncertainty, pose, brightness_params):
 		"""Run frontend tracking on the given frame. Extract keypoints, match them keypoints in the preceding 

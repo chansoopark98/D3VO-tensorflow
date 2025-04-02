@@ -37,14 +37,8 @@ class EvalTrajectory(Learner):
     def update_state(self, ref_images, tgt_image, intrinsic: tf.Tensor):
         right_image = ref_images[1]
         
-        disp_raw, _ = self.depth_net(tgt_image, training=False)
+        disp_raws, _ = self.depth_net(tgt_image, training=False)
 
-        batch_disps = []
-        for s in range(self.num_scales):
-            scale_h = self.image_shape[0] // (2 ** s)
-            scale_w = self.image_shape[1] // (2 ** s)
-            scaled_disp = tf.image.resize(disp_raw[s], [scale_h, scale_w], method=tf.image.ResizeMethod.BILINEAR)
-            batch_disps.append(scaled_disp)
 
         cat_right = tf.concat([tgt_image, right_image], axis=3) # [B,H,W,6]
 
@@ -53,11 +47,11 @@ class EvalTrajectory(Learner):
         batch_poses = tf.cast(pose_right, tf.float32) 
 
         # list comprehension으로 변환
-        batch_disps = [tf.cast(disp, tf.float32) for disp in batch_disps]
+        batch_disps = tf.cast(disp_raws[0], tf.float32)
         intrinsic = tf.cast(intrinsic, tf.float32)
         
         batch_depths = self.disp_to_depth(
-            disp=batch_disps[0],
+            disp=batch_disps,
             min_depth=self.min_depth,
             max_depth=self.max_depth
         )
@@ -70,16 +64,14 @@ class EvalTrajectory(Learner):
         batch_size = batch_depths.shape[0]
 
         for i in range(batch_size):
-            pred_depth = batch_depths.numpy()[i, :, :, 0]  # shape: (H, W)
             pred_pose = batch_poses[i].numpy() # shape: (4, 4)
             current_intrinsic = intrinsic.numpy()[0]  # shape: (3, 3)
     
             # 리스트에 누적
-            self.pred_depth_list.append(pred_depth)
             self.pred_pose_list.append(pred_pose)
             self.intrinsic_list.append(current_intrinsic)
 
-            del pred_depth, pred_pose, current_intrinsic
+            del pred_pose, current_intrinsic
 
     def depth_to_pointcloud(self, depth, pose, intrinsic):
         K = intrinsic

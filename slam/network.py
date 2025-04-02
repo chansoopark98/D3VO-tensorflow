@@ -2,7 +2,9 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf, tf_keras
+from model.depth_net import DispNetSigma
+from model.pose_net import PoseNetAB
 import cv2
 
 def getTransMatrix(trans_vec):
@@ -127,17 +129,38 @@ def disp_to_depth(disp, min_depth, max_depth):
     return depth
     
 class Networks:
-    def __init__(self, image_shape: tuple):
-        # load tf.saved_model
-        self.depth_net = tf.saved_model.load('./weights/vo/export/depth_net')
-        self.pose_net = tf.saved_model.load('./weights/vo/export/pose_net')
+    def __init__(self,
+                 depth_weight_path: str = None,
+                 pose_weight_path: str = None,
+                 image_shape: tuple = (480, 640)):
+        self.image_shape = image_shape
+        self.batch_size = 1
 
-    def depth(self, image):
+        self.depth_net = DispNetSigma(image_shape=self.image_shape, batch_size=self.batch_size, prefix='disp_resnet')
+        dispnet_input_shape = (self.batch_size, *self.image_shape, 3)
+        self.depth_net.build(dispnet_input_shape)
+        _ = self.depth_net(tf.random.normal(dispnet_input_shape))
+        self.depth_net.load_weights(depth_weight_path)
+        self.depth_net.trainable = False
+
+        self.pose_net = PoseNetAB(image_shape=image_shape, batch_size=self.batch_size, prefix='mono_posenet')
+        posenet_input_shape = (self.batch_size, *self.image_shape, 6)
+        self.pose_net.build(posenet_input_shape)
+        _ = self.pose_net(tf.random.normal(posenet_input_shape))
+        self.pose_net.load_weights(pose_weight_path)
+        self.pose_net.trainable = False
+    
+    def _preprocess(self, image, is_bgr=True):
         # bgr to rgb
-        tensor = cv2.cvtColor(image.copy(), cv2.COLOR_BGR2RGB)
-        tensor = tf.cast(tensor, tf.float32)
+        if is_bgr:
+            image = cv2.cvtColor(image.copy(), cv2.COLOR_BGR2RGB)
+        tensor = tf.cast(image, tf.float32)
         tensor = tf.expand_dims(tensor, 0)
         tensor /= 255.0
+        return tensor
+
+    def depth(self, image):
+        tensor = self._preprocess(image, is_bgr=True)
         disps, sigmas = self.depth_net(tensor, training=False)
         depth = disp_to_depth(disps[0], 0.1, 10.0)
         depth = tf.squeeze(depth, axis=0)
@@ -151,19 +174,14 @@ class Networks:
     
     def pose(self, img1, img2, depth, translation_scale=5.6):
         # bgr to rgb
-        left = cv2.cvtColor(img1.copy(), cv2.COLOR_BGR2RGB)
-        right = cv2.cvtColor(img2.copy(), cv2.COLOR_BGR2RGB)
+        left = self._preprocess(img1, is_bgr=True)
+        right = self._preprocess(img2, is_bgr=True)
         
         pair_image = tf.concat([left, right], axis=-1)
         pair_image = tf.cast(pair_image, tf.float32)
-        pair_image /= 255.0
-        pair_image = tf.expand_dims(pair_image, 0)
+        
         pose, a, b = self.pose_net(pair_image, training=False)
 
-        # scaling
-        # pytorch original translation[:, 0] * (1 / depth).mean() * translation_scale)
-        # pose = [axis_angle, translation]
-        # split axis angle and translation
         axisAngle = pose[:, :3]
         translation = pose[:, 3:]
         translation *= tf.reduce_mean(1 / depth) * translation_scale

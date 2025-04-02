@@ -21,11 +21,6 @@ def getTransMatrix(trans_vec):
 
     T = tf.reshape(T,[batch_size, 4, 4])
 
-    # T = tf.zeros([trans_vec.get_shape().as_list()[0],4,4],dtype=tf.float32)
-    # for i in range(4):
-    #     T[:,i,i] = 1
-    # trans_vec = tf.reshape(trans_vec, [-1,3,1])
-    # T[:,:3,3] = trans_vec
     return T
 
 def rotFromAxisAngle(vec):
@@ -69,20 +64,6 @@ def rotFromAxisAngle(vec):
     ],axis=2)
 
     rot_matrix = tf.reshape(rot_matrix, [-1,4,4])
-
-
-    # rot_matrix = tf.zeros([vec.get_shape().as_list()[0],4,4], dtype= tf.float32)
-    #
-    # rot_matrix[:, 0, 0] = tf.squeeze()
-    # rot_matrix[:, 0, 1] = tf.squeeze()
-    # rot_matrix[:, 0, 2] = tf.squeeze()
-    # rot_matrix[:, 1, 0] = tf.squeeze()
-    # rot_matrix[:, 1, 1] = tf.squeeze()
-    # rot_matrix[:, 1, 2] = tf.squeeze()
-    # rot_matrix[:, 2, 0] = tf.squeeze(zxC - ys)
-    # rot_matrix[:, 2, 1] = tf.squeeze(yzC + xs)
-    # rot_matrix[:, 2, 2] = tf.squeeze(z * zC + ca)
-    # rot_matrix[:, 3, 3] = 1
 
     return rot_matrix
 
