@@ -1,5 +1,5 @@
 Directory:
-  exp_name: d3vo_test_mars-redwood_vanilla_step2_fineTune
+  exp_name: d3vo_test_mars-redwood_vanilla
   data_dir: ./vo/data/
   log_dir: ./tensorboard
   weights: ./weights
@@ -17,7 +17,7 @@ Train:
   valid_plot_interval: 20
   save_freq: 2
   vis_batch_size: 1
-  num_source: 2
+  num_source: 1
   num_scale: 4
   imu_seq_len: 10
   min_depth: 0.1
@@ -28,10 +28,10 @@ Train:
   auto_mask: True
   img_w: 640 #640
   img_h: 480 #480
-  weight_decay: 0.00001
+  weight_decay: 0.000001
   beta1: 0.9
-  batch_size: 32 # 1
-  epoch: 31
+  batch_size: 8 # 1
+  epoch: 16
   init_lr: 0.0001
   final_lr: 0.00001
 
