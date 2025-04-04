@@ -186,7 +186,7 @@ class Learner(object):
         pred_as = [left_a, right_a]
         pred_bs = [left_b, right_b]
 
-        for s in range(self.num_scales):
+        for s in range(self.num_scales): # 4번을 반복 // depth scale = 4
             reprojection_list = []
             identity_reprojection_list = []
             ab_losses = []
@@ -237,7 +237,7 @@ class Learner(object):
                 
                 
                 # Photometric loss with uncertainty
-                curr_reproj_loss = self.compute_reprojection_loss(curr_proj_image, scaled_tgts[s], curr_sigma)
+                curr_reproj_loss = self.compute_reprojection_loss(curr_proj_image, scaled_tgts[s], curr_sigma) 
                 reprojection_list.append(curr_reproj_loss)
 
                 # ab loss
@@ -262,7 +262,7 @@ class Learner(object):
                     stddev=1e-5
                 )
                 
-                combined_losses = tf.concat([identity_reprojection_losses, reprojection_losses], axis=3)
+                combined_losses = tf.concat([identity_reprojection_losses, reprojection_losses], axis=3) # [B, H, W, 17] > [B, H, W, 1]
                 combined = tf.reduce_min(combined_losses, axis=3, keepdims=True)
             else:
                 combined = tf.reduce_min(reprojection_losses, axis=3, keepdims=True)

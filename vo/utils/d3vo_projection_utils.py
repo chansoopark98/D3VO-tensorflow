@@ -267,7 +267,7 @@ def projective_inverse_warp(img, depth, pose, intrinsics, invert=False, euler=Fa
     if euler:
         pose = pose_vec2mat(pose)
     else:
-        pose = pose_axis_angle_vec2mat(pose, depth, invert)
+        pose = pose_axis_angle_vec2mat(pose, depth, invert) # 4x4 transformation matrix
     # Construct pixel grid coordinates
     pixel_coords = meshgrid(batch, height, width)
     # Convert pixel coordinates to the camera frame
