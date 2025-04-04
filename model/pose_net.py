@@ -83,8 +83,8 @@ class PoseNetAB(tf_keras.Model):
         out_b = tf.reduce_mean(out_b, axis=[1, 2], keepdims=False)
 
         out_pose *= 0.01
-        # out_a *= 0.01
-        # out_b *= 0.01
+        out_a *= 0.01
+        out_b *= 0.01
 
         return out_pose, out_a, out_b
 

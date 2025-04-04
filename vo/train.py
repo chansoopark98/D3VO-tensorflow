@@ -32,7 +32,20 @@ class Trainer(object):
 
         self.configure_train_ops()
         print('initialize')
-   
+    
+    def lr_schedule(self, epoch, total_epochs):
+        initial_lr = self.config['Train']['init_lr']  # 10^-4
+        final_lr = self.config['Train']['final_lr']   # 10^-5
+        
+        if epoch >= (total_epochs - 5):
+            # For the last 5 epochs, decrease from initial_lr to final_lr linearly
+            decay_epochs = 5
+            remaining = total_epochs - epoch
+            return final_lr + (initial_lr - final_lr) * (remaining / decay_epochs)
+        else:
+            # For all other epochs, return the initial learning rate
+            return initial_lr
+
     def configure_train_ops(self) -> None:
         policy = keras.mixed_precision.Policy('mixed_float16')
         keras.mixed_precision.set_global_policy(policy)
@@ -65,6 +78,8 @@ class Trainer(object):
                                                                               self.config['Train']['epoch'],
                                                                               self.config['Train']['final_lr'],
                                                                               power=0.9)
+        
+
         
         self.optimizer = keras.optimizers.AdamW(learning_rate=self.config['Train']['init_lr'],
                                                beta_1=self.config['Train']['beta1'],
@@ -129,7 +144,7 @@ class Trainer(object):
 
     def train(self) -> None:        
         for epoch in range(self.config['Train']['epoch']):    
-            lr = self.warmup_scheduler(epoch)
+            lr = self.lr_schedule(epoch, self.config['Train']['epoch'])
 
             # Set learning rate
             self.optimizer.learning_rate = lr
