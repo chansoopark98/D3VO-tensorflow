@@ -8,7 +8,8 @@ from utils.plot_utils import PlotTool
 from eval import EvalTrajectory
 from model.pose_net import PoseNetAB
 from model.depth_net import DispNetSigma
-from d3vo_learner import Learner
+# from d3vo_learner import Learner
+from d3vo_learner_full import Learner
 from tqdm import tqdm
 import numpy as np
 from datetime import datetime
