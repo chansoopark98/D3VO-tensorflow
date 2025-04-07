@@ -48,6 +48,7 @@ class Learner(object):
         loss = self.ssim_ratio * ssim_loss + (1. - self.ssim_ratio) * l1_loss
         
         if sigma is not None:
+            # Match PyTorch implementation - multiply by sigma
             loss = loss * sigma
         
         return loss
@@ -156,15 +157,13 @@ class Learner(object):
         pred_poses = []
         scaled_tgts = []
 
-        disp_raw, sigma_raw = self.depth_net(tgt_image, training=training) # disp and sigma results
+        disp_raw, pred_sigmas = self.depth_net(tgt_image, training=training) # disp and sigma results
 
         for scale_idx in range(self.num_scales):
             scaled_disp = disp_raw[scale_idx]
-            scaled_sigma = sigma_raw[scale_idx]
             scaled_depth = self.disp_to_depth(scaled_disp, self.min_depth, self.max_depth)
             
             pred_depths.append(scaled_depth)
-            pred_sigmas.append(scaled_sigma)
 
             tgt_scaled = tf.image.resize(tgt_image,
                                        [H // (2**scale_idx), W // (2**scale_idx)],
@@ -190,9 +189,11 @@ class Learner(object):
             identity_reprojection_list = []
             ab_losses = []
 
+            curr_depth = pred_depths[s]
+            curr_sigma = pred_sigmas[s]
+            curr_tgt = scaled_tgts[s]
+
             for i in range(2): # left, right
-                curr_depth = pred_depths[s]
-                curr_sigma = pred_sigmas[s] 
                 curr_src = ref_images[i]
                 curr_pose = pred_poses[i]
                 curr_a = pred_as[i]
@@ -203,10 +204,6 @@ class Learner(object):
                 w_s = W // (2**s)
                 
                 if s != 0:
-                    # curr_depth = tf.image.resize(curr_depth, [h_s, w_s],
-                    #                              method=tf.image.ResizeMethod.BILINEAR)
-                    # curr_sigma = tf.image.resize(curr_sigma, [h_s, w_s],
-                    #                              method=tf.image.ResizeMethod.BILINEAR)
                     curr_src = tf.image.resize(curr_src, [h_s, w_s],
                                                method=tf.image.ResizeMethod.BILINEAR)
                     scaled_intrinsic = self.rescale_intrinsics(intrinsic, H, W, h_s, w_s)
@@ -234,20 +231,16 @@ class Learner(object):
           
                 curr_proj_image = curr_proj_image * curr_a_expanded + curr_b_expanded
                 
-                
                 # Photometric loss with uncertainty
-                curr_reproj_loss = self.compute_reprojection_loss(curr_proj_image, scaled_tgts[s], curr_sigma) 
+                curr_reproj_loss = self.compute_reprojection_loss(curr_proj_image, curr_tgt, curr_sigma) 
                 reprojection_list.append(curr_reproj_loss)
 
                 # ab loss
                 ab_losses.append((curr_a_expanded - 1) ** 2 + curr_b_expanded ** 2)
         
                 if self.auto_mask:
-                    scaled_src = tf.image.resize(curr_src, [h_s, w_s], 
-                                                 method=tf.image.ResizeMethod.BILINEAR)
-
-                    scaled_src = scaled_src * curr_a_expanded + curr_b_expanded
-                    identity_reproj_loss = self.compute_reprojection_loss(scaled_src, scaled_tgts[s], curr_sigma)
+                    scaled_src = curr_src * curr_a_expanded + curr_b_expanded
+                    identity_reproj_loss = self.compute_reprojection_loss(scaled_src, curr_tgt, curr_sigma)
                     identity_reprojection_list.append(identity_reproj_loss)
 
             reprojection_losses = tf.concat(reprojection_list, axis=3)

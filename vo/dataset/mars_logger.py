@@ -3,6 +3,7 @@ import glob
 import pandas as pd
 import numpy as np
 import cv2
+import json
 
 class MarsLoggerHandler(object):
     def __init__(self, config):
@@ -17,7 +18,7 @@ class MarsLoggerHandler(object):
         self.test_dir = os.path.join(self.root_dir, 'test')
         self.test_data = self.generate_test(test_dir=self.test_dir)
 
-    def _extract_video(self, scene_dir: str, camera_name, camera_data: pd.DataFrame) -> int:
+    def _extract_video(self, scene_dir: str, camera_name) -> int:
         video_file = os.path.join(scene_dir, 'movie.mp4')
         rgb_save_path = os.path.join(scene_dir, 'rgb')
 
@@ -48,32 +49,20 @@ class MarsLoggerHandler(object):
         dataset = glob.glob(os.path.join(rgb_save_path, '*.jpg'))
         data_len = len(dataset)
 
-        rgb_sample = cv2.imread(dataset[0])
-
-        img_h, img_w, _ = rgb_sample.shape
-
-        if camera_name == 'S22':
-            original_image_size = (3000, 4000)
-            fx = 2.66908046e+03
-            fy = 2.67550677e+03
-            cx = 2.05566387e+03
-            cy = 1.44153479e+03
-        else:
-            original_image_size = (img_h, img_w)
-            cx = img_w / 2
-            cy = img_h / 2
+        # Load camera metadata
+        camera_metadata_path = os.path.join(self.root_dir, camera_name, 'calibration_results')
         
-            fx = camera_data['fx[px]'].values[0]
-            fy = camera_data['fy[px]'].values[0]
-            raise ValueError(f"Camera name {camera_name} not recognized. Please check the camera metadata.")
 
-        current_intrinsic = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
+        with open(os.path.join(camera_metadata_path, 'calibration_results.json'), 'r') as f:
+            camera_metadata = json.load(f)
+        original_image_size = (camera_metadata['image_height'], camera_metadata['image_width'])
         
-        # Rescale intrinsic matrix
-        resized_intrinsic = self._rescale_intrinsic(current_intrinsic, self.image_size, original_image_size)
+        intrinsic = np.load(os.path.join(camera_metadata_path, 'camera_matrix.npy'))
 
-        # Count and return the number of saved frames
-        return data_len, resized_intrinsic
+        # rescale intrinsic matrix
+        rescaled_intrinsic = self._rescale_intrinsic(intrinsic, self.image_size, original_image_size)
+
+        return data_len, rescaled_intrinsic
 
     def _rescale_intrinsic(self, intrinsic: np.ndarray, target_size: tuple, current_size: tuple) -> np.ndarray:
         # New shape = self.image_size (H, W)
@@ -85,19 +74,15 @@ class MarsLoggerHandler(object):
         return intrinsic_rescaled
 
     def _process(self, scene_dir: str, camera_name: str, is_test: bool=False) -> list:
-        # load camera metadata
-        camera_file = os.path.join(scene_dir, 'movie_metadata.csv')
-        camera_data = pd.read_csv(camera_file)
-
         # load video .mp4
-        length, resized_intrinsic = self._extract_video(scene_dir, camera_name, camera_data)
+        length, resized_intrinsic = self._extract_video(scene_dir, camera_name)
     
         rgb_files = sorted(glob.glob(os.path.join(scene_dir, 'rgb', '*.jpg')))
         
         if is_test:
             step = 1
         else:
-            step = 2
+            step = 3
 
         samples = []
         for t in range(self.num_source, length - self.num_source, step):
