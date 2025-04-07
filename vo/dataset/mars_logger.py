@@ -97,7 +97,7 @@ class MarsLoggerHandler(object):
         if is_test:
             step = 1
         else:
-            step = 3
+            step = 2
 
         samples = []
         for t in range(self.num_source, length - self.num_source, step):

@@ -8,8 +8,8 @@ from utils.plot_utils import PlotTool
 from eval import EvalTrajectory
 from model.pose_net import PoseNetAB
 from model.depth_net import DispNetSigma
-# from d3vo_learner import Learner
-from d3vo_learner_full import Learner
+from d3vo_learner import Learner
+# from d3vo_learner_full import Learner
 from tqdm import tqdm
 import numpy as np
 from datetime import datetime
@@ -79,9 +79,7 @@ class Trainer(object):
                                                                               self.config['Train']['final_lr'],
                                                                               power=0.9)
         
-
-        
-        self.optimizer = keras.optimizers.AdamW(learning_rate=self.config['Train']['init_lr'],
+        self.optimizer = keras.optimizers.Adam(learning_rate=self.config['Train']['init_lr'],
                                                beta_1=self.config['Train']['beta1'],
                                                weight_decay=self.config['Train']['weight_decay'] if self.config[
                                                    'Train']['weight_decay'] > 0 else None,

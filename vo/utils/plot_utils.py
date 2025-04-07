@@ -62,6 +62,8 @@ class PlotTool:
         # Plotting uncertainty
         for idx in range(self.num_scales):
             sigma = pred_sigmas[idx]
+            # inverse sigma map
+            sigma = 1.0 - sigma
             
             axes[1, idx + 1].imshow(sigma[:,:,0], vmin=0.0, vmax=1.0, cmap='inferno')
             axes[1, idx + 1].set_title(f'Uncertainty Scale {idx}')

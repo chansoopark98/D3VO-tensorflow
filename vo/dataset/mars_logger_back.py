@@ -12,7 +12,7 @@ class MarsLoggerHandler(object):
     def __init__(self, config):
         self.config = config
         # self.root_dir = os.path.join(self.config['Directory']['data_dir'], 'mars_logger')
-        self.root_dir = '/media/park-ubuntu/park_cs/slam_data/mars_logger'
+        self.root_dir = '/media/park-ubuntu/park_cs/slam_data/mars_logger/S22/'
         self.image_size = (self.config['Train']['img_h'], self.config['Train']['img_w'])
         self.num_source = self.config['Train']['num_source'] # 1
         self.imu_seq_len = self.config['Train']['imu_seq_len'] # 10

@@ -2,12 +2,12 @@ import numpy as np
 import tensorflow as tf
 try:
     from .custom_data import CustomDataHandler
-    from .mars_logger import MarsLoggerHandler
+    from .mars_logger_back import MarsLoggerHandler
     from .redwood import RedwoodHandler
     from .augmentation_tool import Augmentations
 except:
     from custom_data import CustomDataHandler
-    from mars_logger import MarsLoggerHandler
+    from mars_logger_back import MarsLoggerHandler
     from redwood import RedwoodHandler
     from augmentation_tool import Augmentations
 
