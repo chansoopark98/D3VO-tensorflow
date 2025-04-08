@@ -56,6 +56,7 @@ class Networks:
 
         sigma = tf.squeeze(sigmas[0], axis=0)
         sigma = tf.squeeze(sigma, axis=-1)
+        sigma = tf.ones(sigma.shape) - sigma
  
         return depth.numpy(), sigma.numpy()
     

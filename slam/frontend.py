@@ -3,7 +3,7 @@ import cv2
 
 # Feature extraction hyperparameters
 NUM_FEATURE = 3000
-FEATURE_QUALITY = 0.007 # 0.01
+FEATURE_QUALITY = 0.01 # 0.01
 
 # def extract_features(img):
 # 	"""Extract ORB features from given image, return keypoints and their descriptors."""

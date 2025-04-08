@@ -1,16 +1,35 @@
 import cv2
 import os
 import numpy as np
+import tensorflow as tf, tf_keras
 from MonoVO import MonoVO
 import numpy as np
 import cv2
 import time
 import sys
+import matplotlib.pyplot as plt
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-from vo.utils.visualization import Visualizer
+from display import display_trajectory
+# from vo.utils.visualization import Visualizer
 
 DEBUG = True
 PER_FRAME_ERROR = True
+
+def calc_avg_matches(frame, out_frame, show_correspondence=False):
+    """Return the average number of matches each keypoint in the specified frame has. 
+    Visualize these matches if show_correspondence=True"""
+    n_match = 0		# avg. number of matches of keypoints in the current frame
+    for idx in frame.pts:
+        # red line to connect current keypoint with Point location in other frames
+        pt = [int(i) for i in frame.kps[idx]]
+        if show_correspondence:
+            for f, f_idx in zip(frame.pts[idx].frames, frame.pts[idx].idxs):
+                cv2.line(out_frame, pt, [int(i) for i in f.kps[f_idx]], (0, 0, 255), thickness=2)
+        n_match += len(frame.pts[idx].frames)
+    if len(frame.pts) > 0:
+        n_match /= len(frame.pts)
+    return n_match, out_frame
+
 
 class OfflineRunner:
 	def __init__(self,
@@ -25,7 +44,7 @@ class OfflineRunner:
 		self.camera_poses = camera_poses
 		self.intrinsic = intrinsic
 		self.mono_vo = MonoVO(self.intrinsic)
-		self.visualizer = Visualizer(draw_plane=False, is_record=False, video_fps=30, video_name="visualization.mp4")
+		# self.visualizer = Visualizer(draw_plane=False, is_record=False, video_fps=30, video_name="visualization.mp4")
 		self.flip_transform = np.diag([1, -1, -1, 1])
 
 	def run(self):
@@ -36,29 +55,37 @@ class OfflineRunner:
 			ret, frame = self.cap.read()
 			if not ret:
 				break
-
+			print("\n*** frame %d/%d ***" % (current_idx, CNT))
 			frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
 			frame = cv2.resize(frame, (self.image_size[1], self.image_size[0]))
 
 			# return depth, uncertainty, self.mp.frames[-1].pose, a, b
-			outputs = self.mono_vo.process_frame(frame, optimize=True)
+			_ = self.mono_vo.process_frame(frame, optimize=True)
 
-			if outputs is not None:
+			if DEBUG:
+				# plot all poses (invert poses so they move in correct direction)
+				display_trajectory([f.pose for f in self.mono_vo.mp.frames])
 
-				depth, sigma, rel_pose, a, b = outputs
+				# show keypoints with matches in this frame
+				for pidx, p in enumerate(self.mono_vo.mp.frames[-1].kps):
+					if pidx in self.mono_vo.mp.frames[-1].pts:
+						# green for matched keypoints 
+						cv2.circle(frame, [int(i) for i in p], color=(0, 255, 0), radius=3)
+					else:
+						# black for unmatched keypoint in this frame
+						cv2.circle(frame, [int(i) for i in p], color=(0, 0, 0), radius=3)
 
-				# OpenCV camera coordinate system to Pyvis camera coordinate system
-				rel_pose = self.flip_transform @ rel_pose @ self.flip_transform
-			
-				# Update the current pose
-				current_pose = current_pose @ rel_pose
+				# Calculate the average number of frames each point in the last frame is also visible in
+				n_match, frame = calc_avg_matches(self.mono_vo.mp.frames[-1], frame, show_correspondence=False)
+				print("Matches: %d / %d (%f)" % (len(self.mono_vo.mp.frames[-1].pts), len(self.mono_vo.mp.frames[-1].kps), n_match))
+
 				
-				self.visualizer.world_pose = current_pose
-				self.visualizer.draw_trajectory(self.visualizer.world_pose, color="red", line_width=2)
-
+				cv2.imshow('d3vo', frame)
+				if cv2.waitKey(1) == 27:     # Stop if ESC is pressed
+					break
 
 			current_idx += 1
-			self.visualizer.render()
+			# self.visualizer.render()
         
 		self.cap.release()
 		cv2.destroyAllWindows()
@@ -69,19 +96,22 @@ class OfflineRunner:
 
 
 if __name__ == "__main__":
-	video_path = '/media/park-ubuntu/park_cs/slam_data/mars_logger/test_2/2025_02_27_11_06_47/movie.mp4'
-	cap = cv2.VideoCapture(video_path)
-	W = 640
-	H = 480
-	CNT = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-	OfflineRunner(video_path=video_path,
-               camera_poses=None,
-               intrinsic=np.array([[427.0528736,   0., 328.9062192],
-                                   [0., 427.0528736, 230.6455664],
-                                   [0.,   0.,   1.]]),
-               image_size=(H, W)).run()
-    #  (video_path=video_path,
-    #            camera_poses=None,
-    #            intrinsic=np.array([[427.0528736,   0., 328.9062192],
-    #                                [0., 427.0528736, 230.6455664],
-	# 							   [0.       ,   0.       ,   1.       ]])
+	with tf.device('/gpu:0'):
+
+		video_path = '/media/park-ubuntu/park_cs/slam_data/mars_logger/test/2025_01_06_18_21_32/movie.mp4'
+		cap = cv2.VideoCapture(video_path)
+		DEBUG = True
+		W = 640
+		H = 480
+		CNT = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+		OfflineRunner(video_path=video_path,
+				camera_poses=None,
+				intrinsic=np.array([[427.0528736,   0., 328.9062192],
+									[0., 427.0528736, 230.6455664],
+									[0.,   0.,   1.]]),
+				image_size=(H, W)).run()
+		#  (video_path=video_path,
+		#            camera_poses=None,
+		#            intrinsic=np.array([[427.0528736,   0., 328.9062192],
+		#                                [0., 427.0528736, 230.6455664],
+		# 							   [0.       ,   0.       ,   1.       ]])

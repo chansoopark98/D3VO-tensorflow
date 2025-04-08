@@ -1,5 +1,5 @@
 Directory:
-  exp_name: d3vo_test_mars-redwood_vanilla_before
+  exp_name: d3vo_only_S22
   data_dir: ./vo/data/
   log_dir: ./tensorboard
   weights: ./weights
@@ -8,7 +8,7 @@ Directory:
 Dataset:
   custom_data: False
   mars_logger: True
-  redwood: True
+  redwood: False
 
 Train:
   mode: axisAngle # axisAngle, euler

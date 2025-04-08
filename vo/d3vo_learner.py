@@ -241,7 +241,7 @@ class Learner(object):
                 reprojection_list.append(curr_reproj_loss)
 
                 # ab loss
-                ab_losses.append((curr_a_expanded - 1) ** 2 + curr_b_expanded ** 2)
+                ab_losses.append(((curr_a_expanded - 1) ** 2) + (curr_b_expanded ** 2))
         
                 if self.auto_mask:
                     scaled_src = tf.image.resize(curr_src, [h_s, w_s], 
